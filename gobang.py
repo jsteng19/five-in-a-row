@@ -27,13 +27,119 @@ def human(self_board, opponent_board):
 
 
 def ai(self_board, opponent_board):
-    x, y = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
-    while self_board[x][y] or opponent_board[x][y]:
-        x, y = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
+    # x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
+    # while self_board[x_pos][y_pos] or opponent_board[x_pos][y_pos]:
+    #     x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
 
-    print("Move played: " + chr(ord('A') + x) + str(y + 1))
-    self_board[x][y] = True
+    value = -float('inf')
+    x_pos, y_pos = -1, -1
+    for x in range(len(self_board)):
+        for y in range(len(self_board)):
+            if not (self_board[x][y] or opponent_board[x][y]):
+                self_board[x][y] = True
+                v = heuristic(self_board, opponent_board)
+                self_board[x][y] = False
+                if v > value:
+                    value = v
+                    x_pos = x
+                    y_pos = y
+
+
+    print("Move played: " + chr(ord('A') + x_pos) + str(y_pos + 1) + "value = " + str(value))
+    self_board[x_pos][y_pos] = True
     return
+
+
+def heuristic(self_board, opponent_board): # doesn't account for blanks between consecutive tiles
+
+    value = 0
+    self_transpose = list(zip(*self_board))
+    opponent_transpose = list(zip(*opponent_board))
+
+    for self, opponent in (self_board, opponent_board), (self_transpose, opponent_transpose):  # horizontal and vertical
+        for x in range(len(self)):
+            count = 0
+            prev_empty = False
+            post_empty = False
+            for y in range(len(self)):
+                if self[x][y]:
+                    count += 1
+                else:
+                    if count >= 2:
+                        if not opponent[x][y]:
+                            post_empty = True
+                        empty = prev_empty + post_empty
+                        value += self_values(count, empty)
+
+                    count = 0
+                    post_empty = False
+                    prev_empty = False
+                    if not opponent[x][y]:
+                        prev_empty = True
+
+            if count >= 2:
+                value += self_values(count, prev_empty)
+
+
+    # for self, opponent in self_board, list(reversed(board)), transpose, list(
+    #         reversed(transpose)):  # covers right and left diagonals over the both halves of the board
+    #     for starting_col in range(len(board)):
+    #         count = 0
+    #         for row in range(len(board) - starting_col):
+    #             if b[starting_col + row][row]:
+    #                 count += 1
+    #             else:
+    #                 count = 0
+    #             if count == 5:
+    #                 return True
+
+    return value
+
+
+def self_values(length, empty):
+
+    if length == 5:
+        return 100000 # 100,000 - win
+
+    if empty == 0:
+        return 0
+
+    if length == 4:
+        if empty == 2:
+            return 1000 # guaranteed win if no opponent win
+        if empty == 1:
+            return 500
+
+    if length == 3:
+        if empty == 2:
+            return 1000 # guaranteed win if no opponent win
+        if empty == 1:
+            return 100
+
+    if length == 2:
+        if empty == 2:
+            return 100 # guaranteed win if no opponent win
+        if empty == 1:
+            return 50
+
+
+def opponent_values(length, empty):
+
+    if length == 4:
+        if empty > 0:
+            return -10000  # guaranteed loss if no current win
+
+    if length == 3:
+        if empty == 2:
+            return -5000  # guaranteed loss if no win within 1 turn
+        if empty == 1:
+            return -100
+
+    if length == 2:
+        if empty == 2:
+            return -100  # guaranteed win if no opponent win
+        if empty == 1:
+            return -50
 
 
 def win(black_board, white_board):
