@@ -7,6 +7,8 @@ def human(self_board, opponent_board):
     while True:
         print("Make a move")
         movestr = input()
+        if movestr == "x":
+            return
         if len(movestr) < 4 and movestr[0].isalpha() and movestr[1:].isdigit():
             x_pos, y_pos = ord(movestr[0].lower()) - ord('a'), int(movestr[1:]) - 1
             if x_pos in range(len(self_board)) and y_pos in range(len(self_board)):
@@ -25,32 +27,39 @@ def human(self_board, opponent_board):
     return
 
 
-def ai(self_board, opponent_board):
-    # x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
-    # while self_board[x_pos][y_pos] or opponent_board[x_pos][y_pos]:
-    #     x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
+def minimax(self_board, opponent_board, depth=1):
 
-    value = -float('inf')
+    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
+    print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1) + "value = " + str(value))
+    self_board[x_pos][y_pos] = True
+
+
+def minimax_helper(self_board, opponent_board, depth, is_max):
+
+    if depth == 0:
+        return -1, -1, heuristic(self_board, opponent_board)
+
+    value = -float('inf') if is_max else float('inf')
     x_pos, y_pos = -1, -1
     for x in range(len(self_board)):
         for y in range(len(self_board)):
             if not (self_board[x][y] or opponent_board[x][y]):
                 self_board[x][y] = True
-                v = heuristic(self_board, opponent_board)
+                _, _, v = minimax_helper(self_board, opponent_board, depth - 1, not is_max)
                 self_board[x][y] = False
-                if v > value:
+                if (v < value) != is_max:
                     value = v
                     x_pos = x
                     y_pos = y
 
-
-    print("Move played: " + chr(ord('A') + x_pos) + str(y_pos + 1) + "value = " + str(value))
-    self_board[x_pos][y_pos] = True
-    return
+    return x_pos, y_pos, value
 
 
 def heuristic(self_board, opponent_board): # doesn't account for blanks between consecutive tiles
+    return single_player_value(self_board, opponent_board, self_value) - single_player_value(opponent_board, self_board, opponent_value)
 
+
+def single_player_value(self_board, opponent_board, value_function):
     value = 0
     self_transpose = list(zip(*self_board))
     opponent_transpose = list(zip(*opponent_board))
@@ -70,7 +79,7 @@ def heuristic(self_board, opponent_board): # doesn't account for blanks between 
                         if not opponent[x][y]:
                             post_empty = True
                         empty = prev_empty + post_empty
-                        value += self_values(count, empty)
+                        value += value_function(count, empty)
 
                     count = 0
                     post_empty = False
@@ -79,11 +88,11 @@ def heuristic(self_board, opponent_board): # doesn't account for blanks between 
                         prev_empty = True
 
             if count >= 2:
-                value += self_values(count, prev_empty)
+                value += value_function(count, prev_empty)
 
-    for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))),\
-            (self_flip[1:], opponent_flip[1:]), (list(reversed(self_flip))[1:], list(reversed(opponent_flip))[1:]):
-        # print_board(self, opponent)
+    for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))), \
+                          (self_flip[1:], opponent_flip[1:]), (
+                          list(reversed(self_flip))[1:], list(reversed(opponent_flip))[1:]):
         for starting_col in range(len(self) - 4):  # 5-in-a-row impossible in the corners
             count = 0
             prev_empty = False
@@ -92,13 +101,12 @@ def heuristic(self_board, opponent_board): # doesn't account for blanks between 
                 if self[starting_col + row][row]:
                     count += 1
                 else:
-
                     if not opponent[starting_col + row][row]:
                         post_empty = True
 
                     if count >= 2:
                         empty = prev_empty + post_empty
-                        value += self_values(count, empty)
+                        value += value_function(count, empty)
 
                     count = 0
                     prev_empty = False
@@ -107,12 +115,12 @@ def heuristic(self_board, opponent_board): # doesn't account for blanks between 
                     post_empty = False
 
             if count >= 2:
-                value += self_values(count, prev_empty)
+                value += value_function(count, prev_empty)
 
     return value
 
 
-def self_values(length, empty):
+def self_value(length, empty):
     print("length:" + str(length) + ", empty: " + str(empty))
     if length == 5:
         return 100000 # 100,000 - win
@@ -134,29 +142,30 @@ def self_values(length, empty):
 
     if length == 2:
         if empty == 2:
+            print("2, 2")
             return 100
         if empty == 1:
             return 50
 
 
-
-def opponent_values(length, empty):
-
+def opponent_value(length, empty):
+    print("length:" + str(length) + ", empty: " + str(empty))
     if length == 4:
         if empty > 0:
-            return -10000  # guaranteed loss if no current win
+            return 10000  # guaranteed loss if no current win
 
     if length == 3:
         if empty == 2:
-            return -5000  # guaranteed loss if no win within 1 turn
+            print("Opponent: 3, 2")
+            return 5000  # guaranteed loss if no win within 1 turn
         if empty == 1:
-            return -100
+            return 100
 
     if length == 2:
         if empty == 2:
-            return -100  # guaranteed win if no opponent win
+            return 100  # guaranteed win if no opponent win
         if empty == 1:
-            return -50
+            return 50
 
 
 def win(black_board, white_board):
@@ -175,7 +184,8 @@ def win(black_board, white_board):
                     if count == 5:
                         return True
 
-        for b in board, list(reversed(board)), flip, list(reversed(flip)): # covers right and left diagonals over the both halves of the board
+        for b in board, list(reversed(board)), flip, list(reversed(flip)): # covers right and left diagonals over the
+                # both halves of the board
             for starting_col in range(len(board) - 4): # 5-in-a-row impossible in the corner
                 count = 0
                 for row in range(len(board) - starting_col):
@@ -199,7 +209,7 @@ def game_over(black_board, white_board):
 
 def print_board(black_board, white_board):
     print("   " + " ".join([chr(l + ord("A")) for l in range(len(black_board))]))
-    for row in range(len(black_board[0])):
+    for row in range(len(black_board)):
         row_string = " " + str(row + 1) if row < 9 else str(row + 1)
         for col in range(len(black_board)):
             if black_board[col][row]:
@@ -223,16 +233,19 @@ def main():
     black_board = [l[:] for l in [[False]*board_size]*board_size]
     white_board = [l[:] for l in [[False]*board_size]*board_size]
 
-    if human_first:
-        black_player = human
-        white_player = ai
-    else:
-        black_player = ai
-        white_player = human
 
-    while (True):
-        black_player(black_board, white_board)
+    black_turn = True
+
+    while True:
+        if black_turn:
+            human(black_board, white_board)
+        else:
+            human(white_board, black_board)
+
+        black_turn = not black_turn
+
         print_board(black_board, white_board)
         print("value: " + str(heuristic(black_board, white_board)))
+
 
 main()

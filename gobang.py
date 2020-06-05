@@ -2,7 +2,6 @@ import argparse
 
 import random
 
-
 def human(self_board, opponent_board):
     while True:
         print("Make a move")
@@ -24,36 +23,46 @@ def human(self_board, opponent_board):
 
     return
 
+def minimax(self_board, opponent_board, depth=2):
 
-def ai(self_board, opponent_board):
-    # x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
-    # while self_board[x_pos][y_pos] or opponent_board[x_pos][y_pos]:
-    #     x_pos, y_pos = random.randint(0, len(self_board) - 1), random.randint(0, len(self_board) - 1)
+    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
+    print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1) + "value = " + str(value))
+    self_board[x_pos][y_pos] = True
 
-    value = -float('inf')
+
+def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1):
+
+    if depth == 0:
+        return x, y, heuristic(self_board, opponent_board, is_max)
+
+    value = -float('inf') if is_max else float('inf')
     x_pos, y_pos = -1, -1
     for x in range(len(self_board)):
         for y in range(len(self_board)):
             if not (self_board[x][y] or opponent_board[x][y]):
                 self_board[x][y] = True
-                v = heuristic(self_board, opponent_board)
+                _, _, v = minimax_helper(self_board, opponent_board, depth - 1, not is_max, x, y)
                 self_board[x][y] = False
-                if v > value:
+                if (v < value) != is_max:
                     value = v
                     x_pos = x
                     y_pos = y
 
-
-    print("Move played: " + chr(ord('A') + x_pos) + str(y_pos + 1) + "value = " + str(value))
-    self_board[x_pos][y_pos] = True
-    return
+    return x_pos, y_pos, value
 
 
-def heuristic(self_board, opponent_board): # doesn't account for blanks between consecutive tiles
-    return single_player_value(self_board, opponent_board) - single_player_value(opponent_board, self_board)
+def heuristic(self_board, opponent_board, is_max): # doesn't account for blanks between consecutive tiles
+    if is_max:
+        return single_player_value(self_board, opponent_board, self_turn_values)\
+                - single_player_value(opponent_board, self_board, opponent_turn_values)
+    else:
+        return single_player_value(self_board, opponent_board, opponent_turn_values) \
+               - single_player_value(opponent_board, self_board, self_turn_values)
 
 
-def single_player_value(self_board, opponent_board):
+
+def single_player_value(self_board, opponent_board, value_function):
+
     value = 0
     self_transpose = list(zip(*self_board))
     opponent_transpose = list(zip(*opponent_board))
@@ -73,7 +82,7 @@ def single_player_value(self_board, opponent_board):
                         if not opponent[x][y]:
                             post_empty = True
                         empty = prev_empty + post_empty
-                        value += self_values(count, empty)
+                        value += value_function(count, empty)
 
                     count = 0
                     post_empty = False
@@ -82,7 +91,7 @@ def single_player_value(self_board, opponent_board):
                         prev_empty = True
 
             if count >= 2:
-                value += self_values(count, prev_empty)
+                value += value_function(count, prev_empty)
 
     for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))), \
                           (self_flip[1:], opponent_flip[1:]), (
@@ -100,7 +109,7 @@ def single_player_value(self_board, opponent_board):
 
                     if count >= 2:
                         empty = prev_empty + post_empty
-                        value += self_values(count, empty)
+                        value += value_function(count, empty)
 
                     count = 0
                     prev_empty = False
@@ -109,15 +118,15 @@ def single_player_value(self_board, opponent_board):
                     post_empty = False
 
             if count >= 2:
-                value += self_values(count, prev_empty)
+                value += value_function(count, prev_empty)
 
     return value
 
 
-def self_values(length, empty):
+def opponent_turn_values(length, empty):
 
     if length == 5:
-        return 100000 # 100,000 - win
+        return 100000  # 100,000 - win
 
     if empty == 0:
         return 0
@@ -136,29 +145,29 @@ def self_values(length, empty):
 
     if length == 2:
         if empty == 2:
-            print("2, 2")
             return 100
         if empty == 1:
             return 50
 
 
-def opponent_values(length, empty):
+def self_turn_values(length, empty):
+    if empty == 0:
+        return 0
 
     if length == 4:
-        if empty > 0:
-            return -10000  # guaranteed loss if no current win
+        return 10000  # guaranteed win if no current win
 
     if length == 3:
         if empty == 2:
-            return -5000  # guaranteed loss if no win within 1 turn
+            return 5000  # guaranteed win if no loss within 1 turn
         if empty == 1:
-            return -100
+            return 100
 
     if length == 2:
         if empty == 2:
-            return -100  # guaranteed win if no opponent win
+            return 100
         if empty == 1:
-            return -50
+            return 50
 
 
 def win(black_board, white_board):
@@ -228,9 +237,9 @@ def main():
 
     if human_first:
         black_player = human
-        white_player = ai
+        white_player = minimax
     else:
-        black_player = ai
+        black_player = minimax
         white_player = human
 
     black_turn = True
