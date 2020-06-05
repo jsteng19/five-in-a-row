@@ -23,6 +23,7 @@ def human(self_board, opponent_board):
 
     return
 
+
 def minimax(self_board, opponent_board, depth=2):
 
     x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
@@ -41,7 +42,7 @@ def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1):
         for y in range(len(self_board)):
             if not (self_board[x][y] or opponent_board[x][y]):
                 self_board[x][y] = True
-                _, _, v = minimax_helper(self_board, opponent_board, depth - 1, not is_max, x, y)
+                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, x, y)
                 self_board[x][y] = False
                 if (v < value) != is_max:
                     value = v
@@ -51,13 +52,13 @@ def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1):
     return x_pos, y_pos, value
 
 
-def heuristic(self_board, opponent_board, is_max): # doesn't account for blanks between consecutive tiles
+def heuristic(self_board, opponent_board, is_max):  # doesn't account for blanks between consecutive tiles
     if is_max:
         return single_player_value(self_board, opponent_board, self_turn_values)\
                 - single_player_value(opponent_board, self_board, opponent_turn_values)
     else:
-        return single_player_value(self_board, opponent_board, opponent_turn_values) \
-               - single_player_value(opponent_board, self_board, self_turn_values)
+        return single_player_value(opponent_board, self_board, opponent_turn_values) \
+               - single_player_value(self_board, opponent_board, self_turn_values)
 
 
 
@@ -151,6 +152,10 @@ def opponent_turn_values(length, empty):
 
 
 def self_turn_values(length, empty):
+
+    if length == 5:
+        return 100000  # 100,000 - win
+
     if empty == 0:
         return 0
 
