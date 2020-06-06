@@ -6,7 +6,7 @@ def human(self_board, opponent_board):
     while True:
         print("Make a move")
         movestr = input()
-        if len(movestr) < 4 and movestr[0].isalpha() and movestr[1:].isdigit():
+        if len(movestr) in range(2, 4) and movestr[0].isalpha() and movestr[1:].isdigit():
             x_pos, y_pos = ord(movestr[0].lower()) - ord('a'), int(movestr[1:]) - 1
             if x_pos in range(len(self_board)) and y_pos in range(len(self_board)):
                 if not (self_board[x_pos][y_pos] or opponent_board[x_pos][y_pos]):
@@ -27,11 +27,12 @@ def human(self_board, opponent_board):
 def minimax(self_board, opponent_board, depth=2):
 
     x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
-    print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1) + "value = " + str(value))
+    print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
+    # print("value = " + str(value))
     self_board[x_pos][y_pos] = True
 
 
-def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1):
+def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1, alpha=-float('inf'), beta=float('inf')):
 
     if depth == 0:
         return x, y, heuristic(self_board, opponent_board, is_max)
@@ -42,12 +43,26 @@ def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1):
         for y in range(len(self_board)):
             if not (self_board[x][y] or opponent_board[x][y]):
                 self_board[x][y] = True
-                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, x, y)
+                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, x, y, alpha, beta)
                 self_board[x][y] = False
-                if (v < value) != is_max:
-                    value = v
-                    x_pos = x
-                    y_pos = y
+                if is_max:
+                    if v > value:
+                        value = v
+                        x_pos = x
+                        y_pos = y
+                        alpha = max(alpha, value)
+
+                else:
+                    if v < value:
+                        value = v
+                        x_pos = x
+                        y_pos = y
+                        beta = min(beta, value)
+
+                if alpha >= beta:
+                    break
+
+
 
     return x_pos, y_pos, value
 
@@ -79,7 +94,7 @@ def single_player_value(self_board, opponent_board, value_function):
                 if self[x][y]:
                     count += 1
                 else:
-                    if count >= 2:
+                    if count >= 1:  # if count >= 2:
                         if not opponent[x][y]:
                             post_empty = True
                         empty = prev_empty + post_empty
@@ -91,7 +106,7 @@ def single_player_value(self_board, opponent_board, value_function):
                     if not opponent[x][y]:
                         prev_empty = True
 
-            if count >= 2:
+            if count >= 1:  # if count >= 2:
                 value += value_function(count, prev_empty)
 
     for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))), \
@@ -108,7 +123,7 @@ def single_player_value(self_board, opponent_board, value_function):
                     if not opponent[starting_col + row][row]:
                         post_empty = True
 
-                    if count >= 2:
+                    if count >= 1:  # if count >= 2:
                         empty = prev_empty + post_empty
                         value += value_function(count, empty)
 
@@ -118,7 +133,7 @@ def single_player_value(self_board, opponent_board, value_function):
                         prev_empty = True
                     post_empty = False
 
-            if count >= 2:
+            if count >= 1:  # if count >= 2:
                 value += value_function(count, prev_empty)
 
     return value
@@ -127,14 +142,14 @@ def single_player_value(self_board, opponent_board, value_function):
 def opponent_turn_values(length, empty):
 
     if length == 5:
-        return 100000  # 100,000 - win
+        return 1000000  # 1,000,000 - win
 
     if empty == 0:
         return 0
 
     if length == 4:
         if empty == 2:
-            return 1000 # guaranteed win if no opponent win
+            return 10000 # guaranteed win if no opponent win
         if empty == 1:
             return 500
 
@@ -150,21 +165,26 @@ def opponent_turn_values(length, empty):
         if empty == 1:
             return 50
 
+    if empty == 2:
+        return 9
+    if empty == 1:
+        return 4
+
 
 def self_turn_values(length, empty):
 
     if length == 5:
-        return 100000  # 100,000 - win
+        return 1000000  # 1,000,000 - win
 
     if empty == 0:
         return 0
 
     if length == 4:
-        return 10000  # guaranteed win if no current win
+        return 100000  # 100,000-guaranteed win if no current win
 
     if length == 3:
         if empty == 2:
-            return 5000  # guaranteed win if no loss within 1 turn
+            return 1000  # guaranteed win if no loss within 1 turn
         if empty == 1:
             return 100
 
@@ -173,6 +193,11 @@ def self_turn_values(length, empty):
             return 100
         if empty == 1:
             return 50
+
+    if empty == 2:
+        return 10
+    if empty == 1:
+        return 5
 
 
 def win(black_board, white_board):
