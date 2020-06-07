@@ -22,7 +22,7 @@ def human(self_board, opponent_board):
     return
 
 
-def minimax(self_board, opponent_board, depth=2):
+def minimax(self_board, opponent_board, depth=3):
 
     x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
     print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
@@ -36,35 +36,58 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
 
     value = -float('inf') if is_max else float('inf')
     x_pos, y_pos = -1, -1
+
+    moves = []
+    ranking_values = []
     for x in range(len(self_board)):
         for y in range(len(self_board)):
-            if not (self_board[x][y] or opponent_board[x][y]):
+            if not(self_board[x][y] or opponent_board[x][y]) and adjacent(self_board, opponent_board, x, y):
+                moves.append((x, y))
                 self_board[x][y] = True
-                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, alpha, beta)
+                ranking_values.append(heuristic(opponent_board, self_board, not is_max))
                 self_board[x][y] = False
-                if is_max:
-                    if v > value:
-                        value = v
-                        x_pos = x
-                        y_pos = y
-                        alpha = max(alpha, value)
 
-                else:
-                    if v < value:
-                        value = v
-                        x_pos = x
-                        y_pos = y
-                        beta = min(beta, value)
+    ranked_moves = sorted(zip(ranking_values, moves))
 
-                if alpha >= beta:
-                    break
+    for _, (x, y) in ranked_moves:
+        if not (self_board[x][y] or opponent_board[x][y]):
+            self_board[x][y] = True
+            _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, alpha, beta)
+            self_board[x][y] = False
+            if is_max:
+                if v > value:
+                    value = v
+                    x_pos = x
+                    y_pos = y
+                    alpha = max(alpha, value)
 
+            else:
+                if v < value:
+                    value = v
+                    x_pos = x
+                    y_pos = y
+                    beta = min(beta, value)
 
+            if alpha >= beta:
+                break
 
     return x_pos, y_pos, value
 
 
-def heuristic(self_board, opponent_board, is_max):  # doesn't account for blanks between consecutive tiles
+def adjacent(self_board, opponent_board, x, y):
+    board = [[any(pair) for pair in zip(column[0], column[1])] for column in zip(self_board, opponent_board)] #  combine boards
+    [column.insert(0, False) for column in board]  # pad board with empty tiles to avoid edge cases
+    [column.append(False) for column in board]
+    board.insert(0, [False]*len(board[0]))
+    board.append([False]*len(board[0]))
+
+    x, y = x + 1, y + 1
+
+    return board[x - 1][y - 1] + board[x - 1][y] + board[x - 1][y + 1] + board[x][y - 1] + board[x][y + 1] + \
+            board[x + 1][y - 1] + board[x + 1][y] + board[x + 1][y + 1]
+
+
+def heuristic(self_board, opponent_board, is_max):
     if is_max:
         return single_player_value(self_board, opponent_board, self_turn_values)\
                 - single_player_value(opponent_board, self_board, opponent_turn_values)
