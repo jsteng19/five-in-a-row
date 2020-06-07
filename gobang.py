@@ -1,7 +1,5 @@
 import argparse
 
-import random
-
 def human(self_board, opponent_board):
     while True:
         print("Make a move")
@@ -28,14 +26,13 @@ def minimax(self_board, opponent_board, depth=2):
 
     x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
     print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
-    # print("value = " + str(value))
     self_board[x_pos][y_pos] = True
 
 
-def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1, alpha=-float('inf'), beta=float('inf')):
+def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'), beta=float('inf')):
 
     if depth == 0:
-        return x, y, heuristic(self_board, opponent_board, is_max)
+        return -1, -1, heuristic(self_board, opponent_board, is_max)
 
     value = -float('inf') if is_max else float('inf')
     x_pos, y_pos = -1, -1
@@ -43,7 +40,7 @@ def minimax_helper(self_board, opponent_board, depth, is_max, x=-1, y=-1, alpha=
         for y in range(len(self_board)):
             if not (self_board[x][y] or opponent_board[x][y]):
                 self_board[x][y] = True
-                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, x, y, alpha, beta)
+                _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, alpha, beta)
                 self_board[x][y] = False
                 if is_max:
                     if v > value:
@@ -216,9 +213,9 @@ def win(black_board, white_board):
                     if count == 5:
                         return True
 
-        for b in board, list(reversed(board)), flip, list(reversed(flip)): # covers right and left diagonals over the
+        for b in board, list(reversed(board)), flip, list(reversed(flip)):  # covers right and left diagonals over the
                 # both halves of the board
-            for starting_col in range(len(board) - 4): # 5-in-a-row impossible in the corner
+            for starting_col in range(len(board) - 4):  # 5-in-a-row impossible in the corner
                 count = 0
                 for row in range(len(board) - starting_col):
                     if b[starting_col + row][row]:
