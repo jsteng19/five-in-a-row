@@ -26,15 +26,15 @@ def human(self_board, opponent_board, size):
     return
 
 
-def minimax(self_board, opponent_board, size, depth=2):
+def minimax(self_board, opponent_board, size, depth=3):
 
-    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
+    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, size, depth, True)
     print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
     self_board[x_pos][y_pos] = True
 
 
-def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'), beta=float('inf')):
-    size = len(self_board)
+def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float('inf'), beta=float('inf')):
+    # size = len(self_board)
     if depth == 0:
         return -1, -1, heuristic(self_board, opponent_board, is_max)
 
@@ -56,7 +56,7 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
     for _, (x, y) in ranked_moves:
         if not (self_board[x][y] or opponent_board[x][y]):
             self_board[x][y] = True
-            _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, alpha, beta)
+            _, _, v = minimax_helper(opponent_board, self_board, size, depth - 1, not is_max, alpha, beta)
             self_board[x][y] = False
             if is_max:
                 if v > value:
@@ -136,7 +136,6 @@ def single_player_value(self_board, opponent_board, values):
         size = len(self)
         for starting_col in range(size - 4):  # 5-in-a-row impossible in the corners
             count = 0
-            post_empty = False
             for row in range(size - starting_col):
                 if self[starting_col + row][row]:
                     count += 1
@@ -192,8 +191,7 @@ def game_over(black_board, white_board):
 
 
 def print_board(black_board, white_board):
-    # print(black_board)
-    # print(white_board)
+
     print("   " + " ".join([chr(l + ord("A")) for l in range(len(black_board))]))
     for row in range(len(black_board)):
         row_string = " " + str(row + 1) if row < 9 else str(row + 1)
@@ -227,24 +225,13 @@ def main():
         white_player = human
 
     black_turn = True
-    while not game_over(black_board, white_board):
+    while True:
         if black_turn:
             black_player(black_board, white_board, board_size)
 
         else:
             white_player(white_board, black_board, board_size)
 
-        print_board(black_board, white_board)
         black_turn = not black_turn
-
-    if win(black_board, white_board):
-        if black_turn:
-            print("White wins!")
-        else:
-            print("Black wins!")
-
-    else:
-        print("Tie")
-
 
 main()
