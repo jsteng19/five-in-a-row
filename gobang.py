@@ -1,10 +1,10 @@
 import argparse
-import numpy
 
-self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 1000], [0, 100000, 100000], [1000000, 1000000, 1000000]]
-opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000]]
+self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 5000], [0, 100000, 100000], [1000000, 1000000, 1000000], [1000000, 1000000, 1000000]]
+opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000], [1000000, 1000000, 1000000]]
 
 def human(self_board, opponent_board, size):
+
     while True:
         print("Make a move")
         movestr = input()
@@ -26,15 +26,15 @@ def human(self_board, opponent_board, size):
     return
 
 
-def minimax(self_board, opponent_board, size, depth=2):
+def minimax(self_board, opponent_board, size, depth=3):
 
-    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
+    x_pos, y_pos, value = minimax_helper(self_board, opponent_board, size, depth, True)
     print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
     self_board[x_pos][y_pos] = True
 
 
-def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'), beta=float('inf')):
-    size = len(self_board)
+def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float('inf'), beta=float('inf')):
+
     if depth == 0:
         return -1, -1, heuristic(self_board, opponent_board, is_max)
 
@@ -52,11 +52,16 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
                 self_board[x][y] = False
 
     ranked_moves = sorted(zip(ranking_values, moves))
+    if is_max:
+        ranked_moves = list(reversed(ranked_moves))
+
+    if not ranked_moves:
+        return size // 2 - 2, size // 2 - 2, 0
 
     for _, (x, y) in ranked_moves:
         if not (self_board[x][y] or opponent_board[x][y]):
             self_board[x][y] = True
-            _, _, v = minimax_helper(opponent_board, self_board, depth - 1, not is_max, alpha, beta)
+            _, _, v = minimax_helper(opponent_board, self_board, size, depth - 1, not is_max, alpha, beta)
             self_board[x][y] = False
             if is_max:
                 if v > value:
@@ -79,6 +84,7 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
 
 
 def adjacent(self_board, opponent_board, x, y):
+
     board = [[any(pair) for pair in zip(column[0], column[1])] for column in zip(self_board, opponent_board)] #  combine boards
     [column.insert(0, False) for column in board]  # pad board with empty tiles to avoid edge cases
     [column.append(False) for column in board]
@@ -92,13 +98,13 @@ def adjacent(self_board, opponent_board, x, y):
 
 
 def heuristic(self_board, opponent_board, is_max):
+
     if is_max:
         return single_player_value(self_board, opponent_board, self_turn_values)\
                 - single_player_value(opponent_board, self_board, opponent_turn_values)
     else:
         return single_player_value(opponent_board, self_board, opponent_turn_values) \
                - single_player_value(self_board, opponent_board, self_turn_values)
-
 
 
 def single_player_value(self_board, opponent_board, values):
@@ -136,7 +142,7 @@ def single_player_value(self_board, opponent_board, values):
         size = len(self)
         for starting_col in range(size - 4):  # 5-in-a-row impossible in the corners
             count = 0
-            post_empty = False
+            prev_empty = False
             for row in range(size - starting_col):
                 if self[starting_col + row][row]:
                     count += 1
@@ -152,7 +158,9 @@ def single_player_value(self_board, opponent_board, values):
 
     return value
 
+
 def win(black_board, white_board):
+
     for board in black_board, white_board:
 
         transpose = list(zip(*board))
@@ -162,7 +170,7 @@ def win(black_board, white_board):
                 count = 0
                 for tile in col:
                     if tile:
-                        count+=1
+                        count += 1
                     else:
                         count = 0
                     if count == 5:
@@ -184,16 +192,17 @@ def win(black_board, white_board):
 
 
 def board_full(black_board, white_board):
+
     return all([all([any(pair) for pair in zip(column[0], column[1])]) for column in zip(black_board, white_board)])
 
 
 def game_over(black_board, white_board):
+
     return win(black_board, white_board) or board_full(black_board, white_board)
 
 
 def print_board(black_board, white_board):
-    # print(black_board)
-    # print(white_board)
+
     print("   " + " ".join([chr(l + ord("A")) for l in range(len(black_board))]))
     for row in range(len(black_board)):
         row_string = " " + str(row + 1) if row < 9 else str(row + 1)
@@ -209,6 +218,7 @@ def print_board(black_board, white_board):
 
 
 def main():
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", default=11)
     parser.add_argument("-l", action="store_true")
