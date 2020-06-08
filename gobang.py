@@ -58,7 +58,10 @@ def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float
     if not ranked_moves:
         return size // 2 - 2, size // 2 - 2, 0
 
-    for _, (x, y) in ranked_moves:
+    for est_value, (x, y) in ranked_moves:
+        if (is_max and est_value > 500000) or (not is_max and est_value < -500000):
+            return x, y, est_value
+
         if not (self_board[x][y] or opponent_board[x][y]):
             self_board[x][y] = True
             _, _, v = minimax_helper(opponent_board, self_board, size, depth - 1, not is_max, alpha, beta)
@@ -234,9 +237,11 @@ def main():
     black_turn = True
     while True:
         if black_turn:
+            print_board(black_board, white_board)
             black_player(black_board, white_board, board_size)
 
         else:
+            print_board(black_board, white_board)
             white_player(white_board, black_board, board_size)
 
         black_turn = not black_turn
