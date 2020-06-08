@@ -1,5 +1,5 @@
 import argparse
-import numpy
+import numpy as np
 
 self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 1000], [0, 100000, 100000], [1000000, 1000000, 1000000]]
 opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000]]
@@ -50,7 +50,6 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
                 self_board[x][y] = True
                 ranking_values.append(heuristic(opponent_board, self_board, not is_max))
                 self_board[x][y] = False
-
     ranked_moves = sorted(zip(ranking_values, moves))
 
     for _, (x, y) in ranked_moves:
@@ -79,16 +78,12 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
 
 
 def adjacent(self_board, opponent_board, x, y):
-    board = [[any(pair) for pair in zip(column[0], column[1])] for column in zip(self_board, opponent_board)] #  combine boards
-    [column.insert(0, False) for column in board]  # pad board with empty tiles to avoid edge cases
-    [column.append(False) for column in board]
-    board.insert(0, [False]*len(board[0]))
-    board.append([False]*len(board[0]))
+    board = np.add(self_board, opponent_board)
+    board = np.pad(board, 1, 'constant', constant_values=(0))
 
-    x, y = x + 1, y + 1
 
-    return board[x - 1][y - 1] + board[x - 1][y] + board[x - 1][y + 1] + board[x][y - 1] + board[x][y + 1] + \
-            board[x + 1][y - 1] + board[x + 1][y] + board[x + 1][y + 1]
+    return board[x][y] + board[x][y + 1] + board[x][y + 2] + board[x + 1][y] + board[x + 1][y + 2] + \
+            board[x + 2][y] + board[x + 2][y + 1] + board[x + 2][y + 2]
 
 
 def heuristic(self_board, opponent_board, is_max):
@@ -104,13 +99,9 @@ def heuristic(self_board, opponent_board, is_max):
 def single_player_value(self_board, opponent_board, values):
 
     value = 0
-    self_transpose = list(zip(*self_board))
-    opponent_transpose = list(zip(*opponent_board))
-    self_flip = [list(reversed(column)) for column in self_board]
-    opponent_flip = [list(reversed(column)) for column in opponent_board]
 
     size = len(self_board)
-    for self, opponent in (self_board, opponent_board), (self_transpose, opponent_transpose):  # horizontal and vertical
+    for self, opponent in (self_board, opponent_board), (np.transpose(self_board), np.transpose(opponent_board)):  # horizontal and vertical
         for x in range(size):
             count = 0
             prev_empty = False
@@ -129,14 +120,16 @@ def single_player_value(self_board, opponent_board, values):
             if count >= 2:
                 value += values[count][prev_empty]
 
-    for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))), \
-                          (self_flip[1:], opponent_flip[1:]), \
-                                  (list(reversed(self_flip))[1:], list(reversed(opponent_flip))[1:]):
+    self_flip = np.flip(self_board, 1)
+    opponent_flip = np.flip(opponent_board, 1)
+
+    for self, opponent in (self_board, opponent_board), (np.flip(self_board, 0), np.flip(opponent_board, 0)), \
+                          (np.delete(self_flip, 1, 0), np.delete(opponent_flip, 1, 0)), \
+                          (np.delete(np.flip(self_flip, 0), 1, 0), np.delete(np.flip(opponent_flip, 0), 1, 0)):
 
         size = len(self)
         for starting_col in range(size - 4):  # 5-in-a-row impossible in the corners
             count = 0
-            post_empty = False
             for row in range(size - starting_col):
                 if self[starting_col + row][row]:
                     count += 1
@@ -152,11 +145,12 @@ def single_player_value(self_board, opponent_board, values):
 
     return value
 
+
 def win(black_board, white_board):
     for board in black_board, white_board:
 
-        transpose = list(zip(*board))
-        flip = [list(reversed(column)) for column in board]
+        transpose = np.transpose(board)
+        flip = np.flip(board, 1)
         for b in board, transpose: # check across and down
             for col in b:
                 count = 0
@@ -168,8 +162,7 @@ def win(black_board, white_board):
                     if count == 5:
                         return True
 
-        for b in board, list(reversed(board)), flip, list(reversed(flip)):  # covers right and left diagonals over the
-                # both halves of the board
+        for b in board, np.flip(board, 0), flip, np.flip(flip, 0):  #  covers right and left diagonals over both halves of the board
             for starting_col in range(len(board) - 4):  # 5-in-a-row impossible in the corner
                 count = 0
                 for row in range(len(board) - starting_col):
@@ -184,7 +177,7 @@ def win(black_board, white_board):
 
 
 def board_full(black_board, white_board):
-    return all([all([any(pair) for pair in zip(column[0], column[1])]) for column in zip(black_board, white_board)])
+    return np.prod(np.add(black_board, white_board))
 
 
 def game_over(black_board, white_board):
@@ -216,8 +209,8 @@ def main():
     board_size = int(args.n)
     human_first = not args.l
 
-    black_board = [l[:] for l in [[False]*board_size]*board_size]
-    white_board = [l[:] for l in [[False]*board_size]*board_size]
+    black_board = np.zeros((board_size, board_size), dtype=np.bool)
+    white_board = np.zeros((board_size, board_size), dtype=np.bool)
 
     if human_first:
         black_player = human
