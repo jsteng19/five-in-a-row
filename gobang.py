@@ -1,10 +1,10 @@
 import argparse
-import numpy
 
-self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 1000], [0, 100000, 100000], [1000000, 1000000, 1000000]]
-opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000]]
+self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 5000], [0, 100000, 100000], [1000000, 1000000, 1000000], [1000000, 1000000, 1000000]]
+opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000], [1000000, 1000000, 1000000]]
 
 def human(self_board, opponent_board, size):
+
     while True:
         print("Make a move")
         movestr = input()
@@ -34,7 +34,7 @@ def minimax(self_board, opponent_board, size, depth=3):
 
 
 def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float('inf'), beta=float('inf')):
-    # size = len(self_board)
+
     if depth == 0:
         return -1, -1, heuristic(self_board, opponent_board, is_max)
 
@@ -52,6 +52,11 @@ def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float
                 self_board[x][y] = False
 
     ranked_moves = sorted(zip(ranking_values, moves))
+    if is_max:
+        ranked_moves = list(reversed(ranked_moves))
+
+    if not ranked_moves:
+        return size // 2 - 2, size // 2 - 2, 0
 
     for _, (x, y) in ranked_moves:
         if not (self_board[x][y] or opponent_board[x][y]):
@@ -79,6 +84,7 @@ def minimax_helper(self_board, opponent_board, size, depth, is_max, alpha=-float
 
 
 def adjacent(self_board, opponent_board, x, y):
+
     board = [[any(pair) for pair in zip(column[0], column[1])] for column in zip(self_board, opponent_board)] #  combine boards
     [column.insert(0, False) for column in board]  # pad board with empty tiles to avoid edge cases
     [column.append(False) for column in board]
@@ -92,13 +98,13 @@ def adjacent(self_board, opponent_board, x, y):
 
 
 def heuristic(self_board, opponent_board, is_max):
+
     if is_max:
         return single_player_value(self_board, opponent_board, self_turn_values)\
                 - single_player_value(opponent_board, self_board, opponent_turn_values)
     else:
         return single_player_value(opponent_board, self_board, opponent_turn_values) \
                - single_player_value(self_board, opponent_board, self_turn_values)
-
 
 
 def single_player_value(self_board, opponent_board, values):
@@ -136,6 +142,7 @@ def single_player_value(self_board, opponent_board, values):
         size = len(self)
         for starting_col in range(size - 4):  # 5-in-a-row impossible in the corners
             count = 0
+            prev_empty = False
             for row in range(size - starting_col):
                 if self[starting_col + row][row]:
                     count += 1
