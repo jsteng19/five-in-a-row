@@ -1,12 +1,16 @@
 import argparse
+import numpy
 
-def human(self_board, opponent_board):
+self_turn_values = [[0, 0, 0], [0, 5, 10], [0, 60, 110], [0, 100, 1000], [0, 100000, 100000], [1000000, 1000000, 1000000]]
+opponent_turn_values = [[0, 0, 0], [0, 4, 9], [0, 50, 100], [0, 100, 500], [0, 500, 10000], [1000000, 1000000, 1000000]]
+
+def human(self_board, opponent_board, size):
     while True:
         print("Make a move")
         movestr = input()
         if len(movestr) in range(2, 4) and movestr[0].isalpha() and movestr[1:].isdigit():
             x_pos, y_pos = ord(movestr[0].lower()) - ord('a'), int(movestr[1:]) - 1
-            if x_pos in range(len(self_board)) and y_pos in range(len(self_board)):
+            if x_pos in range(size) and y_pos in range(size):
                 if not (self_board[x_pos][y_pos] or opponent_board[x_pos][y_pos]):
                     break
                 else:
@@ -22,7 +26,7 @@ def human(self_board, opponent_board):
     return
 
 
-def minimax(self_board, opponent_board, depth=3):
+def minimax(self_board, opponent_board, size, depth=2):
 
     x_pos, y_pos, value = minimax_helper(self_board, opponent_board, depth, True)
     print("Move played: " + chr(ord('a') + x_pos) + str(y_pos + 1))
@@ -30,7 +34,7 @@ def minimax(self_board, opponent_board, depth=3):
 
 
 def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'), beta=float('inf')):
-
+    size = len(self_board)
     if depth == 0:
         return -1, -1, heuristic(self_board, opponent_board, is_max)
 
@@ -39,8 +43,8 @@ def minimax_helper(self_board, opponent_board, depth, is_max, alpha=-float('inf'
 
     moves = []
     ranking_values = []
-    for x in range(len(self_board)):
-        for y in range(len(self_board)):
+    for x in range(size):
+        for y in range(size):
             if not(self_board[x][y] or opponent_board[x][y]) and adjacent(self_board, opponent_board, x, y):
                 moves.append((x, y))
                 self_board[x][y] = True
@@ -97,7 +101,7 @@ def heuristic(self_board, opponent_board, is_max):
 
 
 
-def single_player_value(self_board, opponent_board, value_function):
+def single_player_value(self_board, opponent_board, values):
 
     value = 0
     self_transpose = list(zip(*self_board))
@@ -105,120 +109,48 @@ def single_player_value(self_board, opponent_board, value_function):
     self_flip = [list(reversed(column)) for column in self_board]
     opponent_flip = [list(reversed(column)) for column in opponent_board]
 
+    size = len(self_board)
     for self, opponent in (self_board, opponent_board), (self_transpose, opponent_transpose):  # horizontal and vertical
-        for x in range(len(self)):
+        for x in range(size):
             count = 0
             prev_empty = False
-            post_empty = False
-            for y in range(len(self)):
+            for y in range(size):
                 if self[x][y]:
                     count += 1
                 else:
-                    if count >= 1:  # if count >= 2:
-                        if not opponent[x][y]:
-                            post_empty = True
-                        empty = prev_empty + post_empty
-                        value += value_function(count, empty)
+                    if count >= 2:
+                        value += values[count][prev_empty + (not opponent[x][y])]
 
                     count = 0
-                    post_empty = False
                     prev_empty = False
                     if not opponent[x][y]:
                         prev_empty = True
 
-            if count >= 1:  # if count >= 2:
-                value += value_function(count, prev_empty)
+            if count >= 2:
+                value += values[count][prev_empty]
 
     for self, opponent in (self_board, opponent_board), (list(reversed(self_board)), list(reversed(opponent_board))), \
-                          (self_flip[1:], opponent_flip[1:]), (
-                          list(reversed(self_flip))[1:], list(reversed(opponent_flip))[1:]):
-        for starting_col in range(len(self) - 4):  # 5-in-a-row impossible in the corners
+                          (self_flip[1:], opponent_flip[1:]), \
+                                  (list(reversed(self_flip))[1:], list(reversed(opponent_flip))[1:]):
+
+        size = len(self)
+        for starting_col in range(size - 4):  # 5-in-a-row impossible in the corners
             count = 0
-            prev_empty = False
             post_empty = False
-            for row in range(len(self) - starting_col):
+            for row in range(size - starting_col):
                 if self[starting_col + row][row]:
                     count += 1
                 else:
-                    if not opponent[starting_col + row][row]:
-                        post_empty = True
-
-                    if count >= 1:  # if count >= 2:
-                        empty = prev_empty + post_empty
-                        value += value_function(count, empty)
+                    if count >= 2:
+                        value += values[count][prev_empty + (not opponent[starting_col + row][row])]
 
                     count = 0
-                    prev_empty = False
-                    if post_empty:
-                        prev_empty = True
-                    post_empty = False
+                    prev_empty = not opponent[starting_col + row][row]
 
-            if count >= 1:  # if count >= 2:
-                value += value_function(count, prev_empty)
+            if count >= 2:
+                value += values[count][prev_empty]
 
     return value
-
-
-def opponent_turn_values(length, empty):
-
-    if length == 5:
-        return 1000000  # 1,000,000 - win
-
-    if empty == 0:
-        return 0
-
-    if length == 4:
-        if empty == 2:
-            return 10000 # guaranteed win if no opponent win
-        if empty == 1:
-            return 500
-
-    if length == 3:
-        if empty == 2:
-            return 500 # guaranteed win if no opponent counter or edge
-        if empty == 1:
-            return 100
-
-    if length == 2:
-        if empty == 2:
-            return 100
-        if empty == 1:
-            return 50
-
-    if empty == 2:
-        return 9
-    if empty == 1:
-        return 4
-
-
-def self_turn_values(length, empty):
-
-    if length == 5:
-        return 1000000  # 1,000,000 - win
-
-    if empty == 0:
-        return 0
-
-    if length == 4:
-        return 100000  # 100,000-guaranteed win if no current win
-
-    if length == 3:
-        if empty == 2:
-            return 1000  # guaranteed win if no loss within 1 turn
-        if empty == 1:
-            return 100
-
-    if length == 2:
-        if empty == 2:
-            return 100
-        if empty == 1:
-            return 50
-
-    if empty == 2:
-        return 10
-    if empty == 1:
-        return 5
-
 
 def win(black_board, white_board):
     for board in black_board, white_board:
@@ -260,6 +192,8 @@ def game_over(black_board, white_board):
 
 
 def print_board(black_board, white_board):
+    # print(black_board)
+    # print(white_board)
     print("   " + " ".join([chr(l + ord("A")) for l in range(len(black_board))]))
     for row in range(len(black_board)):
         row_string = " " + str(row + 1) if row < 9 else str(row + 1)
@@ -295,10 +229,10 @@ def main():
     black_turn = True
     while not game_over(black_board, white_board):
         if black_turn:
-            black_player(black_board, white_board)
+            black_player(black_board, white_board, board_size)
 
         else:
-            white_player(white_board, black_board)
+            white_player(white_board, black_board, board_size)
 
         print_board(black_board, white_board)
         black_turn = not black_turn
